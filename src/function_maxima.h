@@ -5,30 +5,39 @@
 #include <memory>
 #include <set>
 
-using namespace std;
-
 template<typename A, typename V>
 class FunctionMaxima {
-private:
-    using Point = pair<A, V>;
+  private:
+    //using Point = std::pair<A, V>;
 
     class point_type {
-    private:
-        shared_ptr<Point> ptr;
+      private:
+        std::shared_ptr<A> arg_;
+        std::shared_ptr<V> val_;
 
-        friend point_type FunctionMaxima::make_point(A, V);
+        friend point_type FunctionMaxima::make_point(std::shared_ptr<A>, std::shared_ptr<V>);
 
-        explicit point_type(Point *ptr) : ptr(ptr) {};
+        explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> val) :
+            arg_(arg), val_(val) {};
 
-    public:
-        // Zwraca argument funkcji.
+      public:
+        // Returns function argument.
         A const &arg() const {
             return ptr.get()->first;
         }
 
-        // Zwraca wartość funkcji w tym punkcie.
+        // Returns function value at a given point.
         V const &value() const {
             return ptr.get()->second;
+        }
+
+        // Can throw exception, is this ok then?
+        point_type(const point_type &other) : arg_(make_shared(other.arg())), val_(make_shared(other.value())) {}
+
+        // Exceptions safety? Is here a memory leak?
+        point_type &operator=(const point_type &other) {
+            arg_ = make_shared(other.arg());
+            val_ = make_shared(other.value());
         }
     };
 
@@ -38,31 +47,42 @@ private:
         }
     };
 
+    // First compares by value, if equal compares by argument.
     class point_type_comparator_by_value {
         bool operator()(const point_type &p1, const point_type &p2) {
-            return p1.value() < p2.value();
+            return (!(p1.value() < p2.value()) && !(p2.value() < p1.value())) ?
+                    p1.arg() < p2.arg() :
+                    p1.value() < p2.value();
         }
     };
 
-    point_type make_point(A arg, V value) {
-        return point_type(new Point(arg, value));
+    point_type make_point(std::shared_ptr<A> arg, std::shared_ptr<V> value) {
+        return point_type(arg, value);
     }
 
-    set<point_type, point_type_comparator_by_arg> points;
-    set<point_type, point_type_comparator_by_value> mx_points;
+    std::multiset<point_type, point_type_comparator_by_arg> points;
+    std::multiset<point_type, point_type_comparator_by_value> mx_points;
 
-public:
-    using iterator = typename set<point_type>::const_iterator;
-    using mx_iterator = typename set<point_type>::const_iterator;
-    using size_type = typename set<point_type>::size_type;
+  public:
+    using iterator = typename std::multiset<point_type>::const_iterator;
+    using mx_iterator = typename std::multiset<point_type>::const_iterator;
+    using size_type = typename std::multiset<point_type>::size_type;
 
     FunctionMaxima() = default;
-
-    FunctionMaxima(const FunctionMaxima &);
-
-    FunctionMaxima &operator=(const FunctionMaxima &);
-
     ~FunctionMaxima() = default;
+
+    FunctionMaxima(const FunctionMaxima &other) : points(other.points) {
+        for (auto &pt : other.mx_points) {
+            // fishy
+            mx_points.insert(*points.find(pt));
+        }
+    }
+
+    FunctionMaxima &operator=(FunctionMaxima other) {
+        // TODO pimpl, to create nothrow swap
+        other.swap(*this);
+        return *this;
+    }
 
     iterator begin() const {
         return points.begin();
@@ -73,9 +93,9 @@ public:
     }
 
     iterator find(A const &x) const {
-        // TODO strong exception
-        unique_ptr<V> dummy(new V);
-        point_type pt = make_point(x, *dummy);
+        // Possible because A is guaranteed to have a copy constructor.
+        std::shared_ptr<A> A_ptr = make_shared<A>(x);
+        point_type pt = make_point(A_ptr, nullptr);
         return points.find(pt);
     }
 
@@ -83,18 +103,19 @@ public:
         return mx_points.begin();
     }
   
-  	mx_iterator mx_end() const {
-     return  mx_points.end();
+    mx_iterator mx_end() const {
+        return  mx_points.end();
     }
 
-    //set value mutator
+    size_type size() const {
+        return points.size();
+    }
 
-    //erase mutator
+    // set_value mutator
 
-    //value at inspector
+    // erase mutator
 
-    //size()
+    // value_at inspector
 };
-
 
 #endif /* FUNCTION_MAXIMA_H */

@@ -1,2 +1,2 @@
 #!/bin/bash
-g++ -Og -g -Wall -Wextra -std=c++17 maxima_example.cc -o maxima
+g++ -Og -g -Wall -Wextra -std=c++17 test.cc -o test

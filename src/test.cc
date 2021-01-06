@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iostream>
 #include <vector>
+#include <array>
 
 using namespace std;
 
@@ -22,6 +23,7 @@ int main() {
     // FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
 
     FunctionMaxima<Secret, Secret> func;
+
     Secret s1 = Secret::create(1);
     Secret s2 = Secret::create(2);
     Secret s3 = Secret::create(3);

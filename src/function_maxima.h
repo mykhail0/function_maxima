@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <memory>
+#include <array>
 #include <set>
 
 template<typename A, typename V>
@@ -64,10 +65,6 @@ public:
         return *this;
     }
 
-    void swap(FunctionMaxima &other) noexcept {
-        std::swap(this->imp, other.imp);
-    }
-
     iterator begin() const { return imp->begin(); }
 
     iterator end() const { return imp->end(); }
@@ -83,10 +80,15 @@ public:
     V const &value_at(const A &a) const { return imp->value_at(a); }
 
     void set_value(const A &a, const V &v) { imp->set_value(a, v); }
-//    void erase(const A &a) { imp->erase(a); }
+
+    void erase(const A &a) { imp->erase(a); }
 
 
 private:
+
+    void swap(FunctionMaxima &other) noexcept {
+        std::swap(this->imp, other.imp);
+    }
 
     // Exposed point_type constructor
     static point_type
@@ -142,19 +144,23 @@ private:
                     (make_point(a, v), points);
             iterator current = currentGuard.it;
 
-            iterator neighbours[] = {left(current),
-                                     current,
-                                     right(current)};
+            iterator neighbours[] {
+                left(current, previous == end()),
+                current,
+                std::next(current)
+            };
 
-            std::unique_ptr<Guard> updateGuards[] =
-                    {mark_as_maximum(neighbours[0]),
-                     mark_as_maximum(neighbours[1]),
-                     mark_as_maximum(neighbours[2])};
+            std::unique_ptr<Guard> updateGuards[] {
+                mark_as_maximum(neighbours[0], true),
+                mark_as_maximum(neighbours[1], previous == end()),
+                mark_as_maximum(neighbours[2], true)
+            };
 
             // From this point, the function will not throw an exception
 
-            for (iterator neighbour : neighbours)
-                unmark_as_maximum(neighbour);
+            unmark_as_maximum(neighbours[0], true);
+            unmark_as_maximum(neighbours[1], previous == end());
+            unmark_as_maximum(neighbours[2], true);
 
             currentGuard.commit();
             for (auto &guard : updateGuards)
@@ -163,7 +169,7 @@ private:
             if (previous != end())
                 points.erase(previous);
 
-            std::cout << is_a_local_maximum(current) << std::endl;
+            std::cout << is_a_local_maximum(current, previous == end()) << std::endl;
         }
 
         void erase(const A &a) {
@@ -178,9 +184,7 @@ private:
             Guard() : done(false) {}
 
         public:
-            void commit() {
-                done = true;
-            }
+            void commit() { done = true; }
         };
 
         template<typename comparator>
@@ -190,12 +194,6 @@ private:
             iterator it;
             std::multiset<point_type, comparator> *multiset;
 
-            ~InsertGuard() noexcept {
-                if (!Guard::done) {
-                    multiset->erase(it);
-                }
-            }
-
             InsertGuard(const point_type &point,
                         std::multiset<point_type, comparator> &multiset) :
                     Guard() {
@@ -204,47 +202,57 @@ private:
             }
 
             InsertGuard(const InsertGuard &other) = default;
+
+            ~InsertGuard() noexcept {
+                if (!Guard::done) {
+                    multiset->erase(it);
+                }
+            }
         };
 
         class EmptyGuard : public Guard {
         };
 
-        bool is_a_local_maximum(const iterator &it) {
-            // TODO multiple values for argument
-            return (left(it) == end() || left(it)->value() < it->value())
-                   && (right(it) == end() || right(it)->value() < it->value());
+        bool is_a_local_maximum(const iterator &it, bool new_one) {
+            return (left(it, new_one) == end() ||
+                    left(it, new_one)->value() < it->value())
+                   &&
+                   (std::next(it) == end() ||
+                    std::next(it)->value() < it->value());
         }
 
-        std::unique_ptr<Guard> mark_as_maximum(iterator it) {
+        std::unique_ptr<Guard> mark_as_maximum(iterator it, bool new_one) {
             if (it == points.end())
                 return std::make_unique<EmptyGuard>();
             auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
-            if (!was_a_local_maximum && is_a_local_maximum(it))
+            if (!was_a_local_maximum && is_a_local_maximum(it, new_one))
                 return std::make_unique<
                         InsertGuard<point_type_comparator_by_value>>(*it,
                                                                      mx_points);
             return std::make_unique<EmptyGuard>();
         }
 
-//
-//  f(1) = 1                          MX                       MX
-//  f(2) = 2,-1 MX -> mark_as_maximum MX -> unmark_as_maximum(noexcept)
-//  f(3) = 1                          MX                       MX
-
-        void unmark_as_maximum(iterator it) noexcept {
+        void unmark_as_maximum(iterator it, bool new_one) noexcept {
             if (it == points.end())
                 return;
             auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
-            if (was_a_local_maximum && !is_a_local_maximum(it))
+            if (was_a_local_maximum && !is_a_local_maximum(it, new_one))
                 mx_points.erase(it_mx);
         }
 
+        iterator left(const iterator &start, bool new_one) {
+            return start == begin() ?
+                end() : 
+                (new_one ? std::prev(start) : std::prev(std::prev(start)));
+        }
+
+        /*
         iterator left(const iterator &start) {
             iterator it = start;
             while (it != begin()) {
@@ -256,9 +264,13 @@ private:
         }
 
         iterator right(const iterator &start) {
-            return points.upper_bound(*start);
+            iterator it = start;
+            while (it != end() && it->arg() <= start->arg()) {
+                it++;
+            }
+            return it;
         }
-
+        */
 
         // First compares by argument, if equal compares by value
         class point_type_comparator_by_arg {

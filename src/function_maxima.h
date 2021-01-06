@@ -143,6 +143,9 @@ private:
             // TODO avoid copying a if already exists
             // TODO (a, v) == previous
             iterator previous = find(a);
+            if(previous != end() && !(previous->value() < v || v <previous->value()))
+                return;
+
             InsertGuard <point_type_comparator_by_arg, iterator> currentGuard
                     (make_point(a, v), points);
             iterator current = currentGuard.it;
@@ -232,6 +235,8 @@ private:
             Guard() : done(false) {}
 
         public:
+            virtual ~Guard() = default;
+
             void commit() { done = true; }
         };
 

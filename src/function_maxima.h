@@ -217,7 +217,7 @@ private:
 
         std::unique_ptr<Guard> mark_as_maximum(iterator it) {
             if (it == points.end())
-                return std::unique_ptr<EmptyGuard>();
+                return std::make_unique<EmptyGuard>();
             auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
@@ -226,7 +226,7 @@ private:
                 return std::make_unique<
                         InsertGuard<point_type_comparator_by_value>>(*it,
                                                                      mx_points);
-            return std::unique_ptr<EmptyGuard>();
+            return std::make_unique<EmptyGuard>();
         }
 
 //

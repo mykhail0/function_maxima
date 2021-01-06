@@ -15,7 +15,7 @@ class FunctionMaxima {
         // Returns function value at a given point.
         V const &value() const noexcept { return *val_; }
 
-        point_type &operator=(const point_type &other) noexcept {
+        point_type &operator=(const point_type &other) {
             // We use copy constructors of A and V.
             arg_ = std::make_shared<A>(other.arg());
             val_ = std::make_shared<V>(other.value());
@@ -57,7 +57,7 @@ class FunctionMaxima {
 
     ~FunctionMaxima() = default;
 
-    FunctionMaxima &operator=(FunctionMaxima other) noexcept {
+    FunctionMaxima &operator=(FunctionMaxima other) {
         other.swap(*this);
         return *this;
     }

@@ -89,6 +89,7 @@ class FunctionMaxima {
         }
     };
 
+    // Exposed point_type constructor
     static point_type
     make_point(std::shared_ptr<A> arg, std::shared_ptr<V> value) {
         return point_type(arg, value);
@@ -106,8 +107,7 @@ class FunctionMaxima {
         }
 
         iterator find(A const &x) const {
-            // Possible because A is guaranteed to have a copy constructor.
-            std::shared_ptr<A> A_ptr = std::make_shared<A>(x);
+            std::shared_ptr<A> A_ptr(&x);
             point_type pt = make_point(A_ptr, nullptr);
             return points.find(pt);
         }

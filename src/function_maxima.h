@@ -22,6 +22,7 @@ public:
             val_ = std::make_shared<V>(other.value());
         }
 
+        // Causes shared ownership of `other` function objects.
         point_type(const point_type &other) = default;
 
     private:
@@ -59,6 +60,7 @@ public:
 
     ~FunctionMaxima() = default;
 
+    // Copy and swap idiom.
     FunctionMaxima &operator=(FunctionMaxima other) {
         other.swap(*this);
         return *this;
@@ -89,7 +91,7 @@ private:
         std::swap(this->imp, other.imp);
     }
 
-    // Exposed point_type constructor
+    // Exposed point_type constructor.
     static point_type
     make_point(const std::shared_ptr<A> &arg, const std::shared_ptr<V> &value) {
         return point_type(arg, value);
@@ -107,14 +109,15 @@ private:
         ~MaximaImpl() = default;
 
         MaximaImpl(const MaximaImpl &other) : points(other.points) {
+            // point_type objects are shared between `points` and `mx_points`.
             for (auto &pt : other.mx_points) {
                 mx_points.insert(*points.find(pt));
             }
         }
 
         iterator find(A const &a) const {
-            // TODO avoid copying
             std::shared_ptr<A> A_ptr = std::make_shared<A>(a);
+            // Using dummy pointer, set comparator only uses the A object.
             point_type pt = make_point(A_ptr, nullptr);
             return points.find(pt);
         }
@@ -138,45 +141,89 @@ private:
 
         void set_value(const A &a, const V &v) {
             // TODO avoid copying a if already exists
+            // TODO (a, v) == previous
             iterator previous = find(a);
-            InsertGuard <point_type_comparator_by_arg> currentGuard
+            InsertGuard <point_type_comparator_by_arg, iterator> currentGuard
                     (make_point(a, v), points);
             iterator current = currentGuard.it;
 
+            bool new_argument = previous == end();
+
             iterator neighbours[] {
-                left(current, previous == end()),
+                left(current, new_argument ? DONT_SKIP : SKIP_LEFT),
                 current,
-                std::next(current)
+                right(current, DONT_SKIP)
             };
 
             std::unique_ptr<Guard> updateGuards[] {
-                mark_as_maximum(neighbours[0], true),
-                mark_as_maximum(neighbours[1], previous == end()),
-                mark_as_maximum(neighbours[2], true)
+                mark_as_maximum(neighbours[0],
+                        new_argument ? DONT_SKIP : SKIP_RIGHT),
+                mark_as_maximum(neighbours[1],
+                        new_argument ? DONT_SKIP : SKIP_LEFT),
+                mark_as_maximum(neighbours[2], DONT_SKIP)
             };
 
-            // From this point, the function will not throw an exception
+            std::unique_ptr<Guard> eraseGuards[] {
+                unmark_as_maximum(neighbours[0],
+                        new_argument ? DONT_SKIP : SKIP_RIGHT),
+                unmark_as_maximum(neighbours[1],
+                        new_argument ? DONT_SKIP : SKIP_LEFT),
+                unmark_as_maximum(neighbours[2], DONT_SKIP)
+            };
 
-            unmark_as_maximum(neighbours[0], true);
-            unmark_as_maximum(neighbours[1], previous == end());
-            unmark_as_maximum(neighbours[2], true);
+            if (!new_argument) {
+                mx_points.erase(*previous);
+                // From this point, the function will not throw an exception
+                points.erase(previous);
+            }
 
             currentGuard.commit();
             for (auto &guard : updateGuards)
                 guard->commit();
 
-            if (previous != end()) {
-                mx_points.erase(*previous);
-                points.erase(previous);
-            }
+            for (auto &guard : eraseGuards)
+                guard->commit();
 
-            //std::cout << is_a_local_maximum(current, previous == end()) << std::endl;
+            //std::cout << is_a_local_maximum(current, new_argument ? DONT_SKIP : SKIP_LEFT) << std::endl;
         }
 
         void erase(const A &a) {
+            iterator to_erase = find(a);
+            if (to_erase == end())
+                return;
+
+            mx_iterator to_erase_mx = mx_points.find(*to_erase);
+
+            iterator neighbours[] {
+                left(to_erase, DONT_SKIP),
+                right(to_erase, DONT_SKIP)
+            };
+
+            std::unique_ptr<Guard> updateGuards[] {
+                mark_as_maximum(neighbours[0], SKIP_RIGHT),
+                mark_as_maximum(neighbours[1], SKIP_LEFT)
+            };
+
+            std::unique_ptr<Guard> eraseGuards[] {
+                unmark_as_maximum(neighbours[0], SKIP_RIGHT),
+                unmark_as_maximum(neighbours[1], SKIP_LEFT)
+            };
+
+            for (auto &guard : updateGuards)
+                guard->commit();
+
+            for (auto &guard : eraseGuards)
+                guard->commit();
+
+            if (to_erase_mx != mx_end())
+                mx_points.erase(to_erase_mx);
+            points.erase(to_erase);
         }
 
     private:
+        enum ToOmit {
+            DONT_SKIP, SKIP_LEFT, SKIP_RIGHT
+        };
 
         class Guard {
         protected:
@@ -188,21 +235,21 @@ private:
             void commit() { done = true; }
         };
 
-        template<typename comparator>
+        // Guards inserting the point_type object into the given multiset
+        // with `comparator` comparator.
+        template <typename comparator, typename it_type>
         class InsertGuard : public Guard {
         public:
 
-            iterator it;
+            it_type it;
             std::multiset<point_type, comparator> *multiset;
 
-            InsertGuard(const point_type &point,
-                        std::multiset<point_type, comparator> &multiset) :
-                    Guard() {
+            InsertGuard(
+                const point_type &point, std::multiset<point_type, comparator> &multiset
+            ) : Guard() {
                 it = multiset.insert(point);
                 this->multiset = &multiset;
             }
-
-            InsertGuard(const InsertGuard &other) = default;
 
             ~InsertGuard() noexcept {
                 if (!Guard::done) {
@@ -211,46 +258,87 @@ private:
             }
         };
 
+        // Guards erasing a given iterator from the multiset
+        // with `comparator` comparator.
+        template <typename comparator, typename it_type>
+        class DelayedErase : public Guard {
+        public:
+
+            it_type it;
+            std::multiset<point_type, comparator> *multiset;
+
+            DelayedErase(
+                const it_type &iter, std::multiset<point_type, comparator> &multiset
+            ) : Guard(), it(iter), multiset(&multiset) {
+                std::cout << "bruh" << std::endl;
+            }
+
+            ~DelayedErase() noexcept {
+                std::cout << "delayederase dtor" << std::endl;
+                if (Guard::done) {
+                    multiset->erase(it);
+                }
+            }
+        };
+
         class EmptyGuard : public Guard {
         };
 
-        bool is_a_local_maximum(const iterator &it, bool new_one) {
-            return (left(it, new_one) == end() ||
-                    left(it, new_one)->value() < it->value())
+        bool is_a_local_maximum(const iterator &it, ToOmit neighbour) {
+            return (left(it, neighbour) == end() ||
+                    left(it, neighbour)->value() < it->value())
                    &&
-                   (std::next(it) == end() ||
-                    std::next(it)->value() < it->value());
+                   (right(it, neighbour) == end() ||
+                    right(it, neighbour)->value() < it->value());
         }
 
-        std::unique_ptr<Guard> mark_as_maximum(iterator it, bool new_one) {
+        std::unique_ptr<Guard> mark_as_maximum(const iterator &it, ToOmit neighbour) {
             if (it == points.end())
                 return std::make_unique<EmptyGuard>();
             auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
-            if (!was_a_local_maximum && is_a_local_maximum(it, new_one))
-                return std::make_unique<
-                        InsertGuard<point_type_comparator_by_value>>(*it,
-                                                                     mx_points);
+            if (!was_a_local_maximum && is_a_local_maximum(it, neighbour))
+                return std::make_unique<InsertGuard<point_type_comparator_by_value, mx_iterator>>(*it, mx_points);
             return std::make_unique<EmptyGuard>();
         }
 
-        void unmark_as_maximum(iterator it, bool new_one) noexcept {
+        std::unique_ptr<Guard> unmark_as_maximum(const iterator &it, ToOmit neighbour) {
             if (it == points.end())
-                return;
+                return std::make_unique<EmptyGuard>();
             auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
-            if (was_a_local_maximum && !is_a_local_maximum(it, new_one))
-                mx_points.erase(it_mx);
+            if (was_a_local_maximum && !is_a_local_maximum(it, neighbour))
+                return std::make_unique<DelayedErase<point_type_comparator_by_value, mx_iterator>>(it_mx, mx_points);
+
+            return std::make_unique<EmptyGuard>();
         }
 
-        iterator left(const iterator &start, bool new_one) {
-            return start == begin() ?
-                end() : 
-                (new_one ? std::prev(start) : std::prev(std::prev(start)));
+        // Returns left neighbour of `start`.
+        iterator left(const iterator &start, ToOmit neighbour) {
+            if (start == begin())
+                return end();
+
+            if (neighbour == SKIP_LEFT) {
+                return left(std::prev(start), DONT_SKIP);
+            } else {
+                return std::prev(start);
+            }
+        }
+
+        // Returns right neighbour of `start`.
+        iterator right(const iterator &start, ToOmit neighbour) {
+            if (start == end())
+                return end();
+
+            if (neighbour == SKIP_RIGHT) {
+                return right(std::next(start), DONT_SKIP);
+            } else {
+                return std::next(start);
+            }
         }
 
         // First compares by argument, if equal compares by value

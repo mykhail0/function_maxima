@@ -216,7 +216,7 @@ private:
         class EmptyGuard : public Guard {
         };
 
-        bool is_a_local_maximum(const iterator &it) noexcept {
+        bool is_a_local_maximum(const iterator &it) {
             // TODO multiple values for argument
             return (left(it) == end() || left(it)->value() < it->value())
                    && (right(it) == end() || right(it)->value() < it->value());
@@ -280,9 +280,6 @@ private:
         // First compares by value, if equal compares by argument.
         class point_type_comparator_by_value {
         public:
-            template<typename> friend
-            class InsertGuard;
-
             bool operator()(const point_type &p1, const point_type &p2) const {
                 return (!(p1.value() < p2.value()) &&
                         !(p2.value() < p1.value())) ?

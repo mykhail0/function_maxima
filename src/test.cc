@@ -22,4 +22,5 @@ int main() {
     // FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
 
     FunctionMaxima<int, int> func;
+    FunctionMaxima<int, int> func2 = func;
 }

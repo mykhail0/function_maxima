@@ -8,37 +8,36 @@ template<typename A, typename V>
 class FunctionMaxima {
   public:
     class point_type {
-      public:
+    public:
         // Returns function argument.
-        A const &arg() const { return *arg_; }
+        A const &arg() const noexcept { return *arg_; }
 
         // Returns function value at a given point.
-        V const &value() const { return *val_; }
+        V const &value() const noexcept { return *val_; }
 
-        // Can throw exception, is this ok then?
-        point_type(const point_type &other) :
-            arg_(make_shared(other.arg())), val_(make_shared(other.value())) {}
-
-        // Exceptions safety? Is here a memory leak?
-        point_type &operator=(const point_type &other) {
-            arg_ = make_shared(other.arg());
-            val_ = make_shared(other.value());
+        point_type &operator=(const point_type &other) noexcept {
+            // We use copy constructors of A and V.
+            arg_ = std::make_shared<A>(other.arg());
+            val_ = std::make_shared<V>(other.value());
         }
 
-      private:
+        point_type(const point_type &other) = default;
+
+    private:
         std::shared_ptr<A> arg_;
         std::shared_ptr<V> val_;
 
         friend point_type FunctionMaxima::make_point(
-            std::shared_ptr<A>, std::shared_ptr<V>
+                std::shared_ptr<A>, std::shared_ptr<V>
         );
 
-        explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> val) :
-            arg_(arg), val_(val) {};
+        explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> val)
+        noexcept:
+                arg_(arg), val_(val) {};
     };
 
     class InvalidArg : public std::exception {
-        virtual const char* what() const throw() {
+        virtual const char *what() const throw() {
             return "Argument is not in the domain.";
         }
     };
@@ -47,8 +46,15 @@ class FunctionMaxima {
     using mx_iterator = typename std::multiset<point_type>::const_iterator;
     using size_type = typename std::multiset<point_type>::size_type;
 
-    FunctionMaxima() = default;
-    FunctionMaxima(const FunctionMaxima &other) = default;
+    FunctionMaxima() {
+        imp = std::make_unique<MaximaImpl>();
+    }
+
+    FunctionMaxima(const FunctionMaxima &other) {
+        // We use copy constructor of MaximaImpl
+        imp = std::make_unique<MaximaImpl>(*other.imp);
+    }
+
     ~FunctionMaxima() = default;
 
     FunctionMaxima &operator=(FunctionMaxima other) noexcept {
@@ -73,11 +79,6 @@ class FunctionMaxima {
 */
 
   private:
-    class point_type_comparator_by_arg {
-        bool operator()(const point_type &p1, const point_type &p2) {
-            return p1.arg() < p2.arg();
-        }
-    };
 
     // First compares by value, if equal compares by argument.
     class point_type_comparator_by_value {
@@ -88,7 +89,8 @@ class FunctionMaxima {
         }
     };
 
-    point_type make_point(std::shared_ptr<A> arg, std::shared_ptr<V> value) {
+    static point_type
+    make_point(std::shared_ptr<A> arg, std::shared_ptr<V> value) {
         return point_type(arg, value);
     }
 
@@ -129,7 +131,26 @@ class FunctionMaxima {
         void erase(const A &a) {
         }
 
-      private:
+    private:
+
+        class point_type_comparator_by_arg {
+        public:
+            bool operator()(const point_type &p1, const point_type &p2) const {
+                return p1.arg() < p2.arg();
+            }
+        };
+
+        // First compares by value, if equal compares by argument.
+        class point_type_comparator_by_value {
+        public:
+            bool operator()(const point_type &p1, const point_type &p2) const {
+                return (!(p1.value() < p2.value()) &&
+                        !(p2.value() < p1.value())) ?
+                       p1.arg() < p2.arg() :
+                       p1.value() < p2.value();
+            }
+        };
+
         InvalidArg invalid_exception;
         std::multiset<point_type, point_type_comparator_by_arg> points;
         std::multiset<point_type, point_type_comparator_by_value> mx_points;

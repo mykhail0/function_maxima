@@ -144,10 +144,8 @@ class FunctionMaxima {
         class point_type_comparator_by_value {
         public:
             bool operator()(const point_type &p1, const point_type &p2) const {
-                return (!(p1.value() < p2.value()) &&
-                        !(p2.value() < p1.value())) ?
-                       p1.arg() < p2.arg() :
-                       p1.value() < p2.value();
+                return p1.value() < p2.value() ||
+                       (p1.value() == p2.value() && p1.arg() < p2.arg());
             }
         };
 

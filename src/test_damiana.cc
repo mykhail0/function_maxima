@@ -287,16 +287,20 @@ int main() {
     // Test przykladowy.
 #if TEST_NUM == 101
     FunctionMaxima<int, int> fun;
+    fun.debug();
     fun.set_value(0, 1);
     assert(fun_equal(fun, { {0, 1} }));
     assert(fun_mx_equal(fun, { {0, 1} }));
-
+    fun.debug();
     fun.set_value(0, 0);
     assert(fun_equal(fun, { {0, 0} }));
     assert(fun_mx_equal(fun, { {0, 0} }));
-
+    fun.debug();
     fun.set_value(1, 0);
+    fun.debug();
     fun.set_value(2, 0);
+    fun.debug();
+
     assert(fun_equal(fun, { {0, 0}, {1, 0}, {2, 0} }));
     assert(fun_mx_equal(fun, { {0, 0}, {1, 0}, {2, 0} }));
 
@@ -321,8 +325,12 @@ int main() {
     assert(fun.find(1) == fun.end());
     assert(fun_mx_equal(fun, { {0, 2}, {2, 2} }));
 
+    fun.debug();
     fun.set_value(-2, 0);
+    fun.debug();
     fun.set_value(-1, -1);
+    fun.debug();
+
     assert(fun_mx_equal(fun, { {0, 2}, {2, 2}, {-2, 0} }));
 
     std::vector<FunctionMaxima<Secret, Secret>::point_type> v;

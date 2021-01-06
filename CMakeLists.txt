@@ -11,4 +11,6 @@ project(JNP1_2)
 #endif ()
 
 add_executable(test src/test.cc)
-add_executable(set_exception_test src/set_exception_test.cc)
+#add_definitions(-DTEST_NUM=101)
+add_executable(testyDamiana src/test_damiana.cc)
+add_executable(wyjatkowyInt src/wyjatkowy_int.cpp)

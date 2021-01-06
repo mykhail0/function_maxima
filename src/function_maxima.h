@@ -5,6 +5,13 @@
 #include <memory>
 #include <set>
 
+class InvalidArg : public std::exception {
+public:
+    virtual const char *what() const throw() {
+        return "Argument is not in the domain.";
+    }
+};
+
 template<typename A, typename V>
 class FunctionMaxima {
 public:
@@ -37,12 +44,6 @@ public:
                             const std::shared_ptr<V> &val)
         noexcept:
                 arg_(arg), val_(val) {};
-    };
-
-    class InvalidArg : public std::exception {
-        virtual const char *what() const throw() {
-            return "Argument is not in the domain.";
-        }
     };
 
     using iterator = typename std::multiset<point_type>::const_iterator;
@@ -84,6 +85,19 @@ public:
 
     void erase(const A &a) { imp->erase(a); }
 
+    void debug() {
+        std::cout << "POINTS:" << std::endl;
+        for(auto p : *this){
+
+            std::cout << p.arg() << " -> " << p.value() << std::endl;
+        }
+        std::cout << "MX_POINTS:" << std::endl;
+        for(auto it = mx_begin(); it != mx_end(); it++){
+            auto p = *it;
+            std::cout << p.arg() << " -> " << p.value() << std::endl;
+        }
+        std::cout << "-----------------------------------" << std::endl;
+    }
 
 private:
 
@@ -108,12 +122,9 @@ private:
 
         ~MaximaImpl() = default;
 
-        MaximaImpl(const MaximaImpl &other) : points(other.points) {
-            // point_type objects are shared between `points` and `mx_points`.
-            for (auto &pt : other.mx_points) {
-                mx_points.insert(*points.find(pt));
-            }
-        }
+        MaximaImpl(const MaximaImpl &other) :
+        points(other.points),
+        mx_points(other.mx_points) {}
 
         iterator find(A const &a) const {
             std::shared_ptr<A> A_ptr = std::make_shared<A>(a);
@@ -136,7 +147,7 @@ private:
             iterator it = find(a);
             if (it == end())
                 throw invalid_exception;
-            return *it;
+            return it->value();
         }
 
         void set_value(const A &a, const V &v) {
@@ -285,10 +296,10 @@ private:
 
         bool is_a_local_maximum(const iterator &it, ToOmit neighbour) {
             return (left(it, neighbour) == end() ||
-                    left(it, neighbour)->value() < it->value())
+                    !(it->value() < left(it, neighbour)->value()))
                    &&
                    (right(it, neighbour) == end() ||
-                    right(it, neighbour)->value() < it->value());
+                   !(it->value() < right(it, neighbour)->value()));
         }
 
         std::unique_ptr<Guard> mark_as_maximum(const iterator &it, ToOmit neighbour) {
@@ -352,11 +363,12 @@ private:
         // First compares by value, if equal compares by argument.
         class point_type_comparator_by_value {
         public:
+            //TODO
             bool operator()(const point_type &p1, const point_type &p2) const {
-                return (!(p1.value() < p2.value()) &&
-                        !(p2.value() < p1.value())) ?
+                return !(p1.value() < p2.value())  &&
+                        !(p2.value() < p1.value()) ?
                        p1.arg() < p2.arg() :
-                       p1.value() < p2.value();
+                       p2.value() < p1.value();
 
             }
         };

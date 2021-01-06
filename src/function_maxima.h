@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <memory>
-#include <array>
 #include <set>
 
 template<typename A, typename V>
@@ -166,10 +165,12 @@ private:
             for (auto &guard : updateGuards)
                 guard->commit();
 
-            if (previous != end())
+            if (previous != end()) {
+                mx_points.erase(*previous);
                 points.erase(previous);
+            }
 
-            std::cout << is_a_local_maximum(current, previous == end()) << std::endl;
+            //std::cout << is_a_local_maximum(current, previous == end()) << std::endl;
         }
 
         void erase(const A &a) {
@@ -251,26 +252,6 @@ private:
                 end() : 
                 (new_one ? std::prev(start) : std::prev(std::prev(start)));
         }
-
-        /*
-        iterator left(const iterator &start) {
-            iterator it = start;
-            while (it != begin()) {
-                it--;
-                if (it->arg() < start->arg())
-                    return it;
-            }
-            return end();
-        }
-
-        iterator right(const iterator &start) {
-            iterator it = start;
-            while (it != end() && it->arg() <= start->arg()) {
-                it++;
-            }
-            return it;
-        }
-        */
 
         // First compares by argument, if equal compares by value
         class point_type_comparator_by_arg {

@@ -133,6 +133,7 @@ private:
         }
 
         void set_value(const A &a, const V &v) {
+            // TODO avoid copying a if already exists
             iterator previous = find(a);
             InsertGuard <point_type_comparator_by_arg> currentGuard
                     (make_point(a, v), points);
@@ -215,7 +216,7 @@ private:
         class EmptyGuard : public Guard {
         };
 
-        bool is_a_local_maximum(iterator it) {
+        bool is_a_local_maximum(const iterator &it) noexcept {
             // TODO multiple values for argument
             return (left(it) == end() || left(it)->value() < it->value())
                    && (right(it) == end() || right(it)->value() < it->value());
@@ -224,7 +225,7 @@ private:
         std::unique_ptr<Guard> mark_as_maximum(iterator it) {
             if (it == points.end())
                 return std::unique_ptr<EmptyGuard>();
-            auto it_mx = find_in_multiset(it->arg(), mx_points);
+            auto it_mx = find_in_multiset(*it, mx_points);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
@@ -244,7 +245,7 @@ private:
         void unmark_as_maximum(iterator it) noexcept {
             if (it == points.end())
                 return;
-            auto it_mx = find_in_multiset(it->arg(), mx_points);
+            auto it_mx = find_in_multiset(*it, mx_points);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
@@ -253,11 +254,13 @@ private:
         }
 
         iterator left(const iterator &start) {
-            iterator it = points.lower_bound(*start);
-            if (it != begin())
-                return --it;
-            else
-                return end();
+            iterator it = start;
+            while (it != begin()) {
+                it--;
+                if (it->arg() < start->arg())
+                    return it;
+            }
+            return end();
         }
 
         iterator right(const iterator &start) {

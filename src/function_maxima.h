@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <set>
+
 template<typename A, typename V>
 class FunctionMaxima {
   public:
@@ -34,6 +35,12 @@ class FunctionMaxima {
 
         explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> val) :
             arg_(arg), val_(val) {};
+    };
+
+    class InvalidArg : public std::exception {
+        virtual const char* what() const throw() {
+            return "Argument is not in the domain.";
+        }
     };
 
     using iterator = typename std::multiset<point_type>::const_iterator;
@@ -109,8 +116,11 @@ class FunctionMaxima {
         mx_iterator mx_end() const { return  mx_points.end(); }
         size_type size() const { return points.size(); }
 
-/*
-        V const &value_at(const A &a) const {
+        const V &value_at(const A &a) const {
+            iterator it = find(a);
+            if (it == end())
+                throw invalid_exception;
+            return *it;
         }
 
         void set_value(const A &a, const V &v) {
@@ -118,9 +128,9 @@ class FunctionMaxima {
 
         void erase(const A &a) {
         }
-*/
 
       private:
+        InvalidArg invalid_exception;
         std::multiset<point_type, point_type_comparator_by_arg> points;
         std::multiset<point_type, point_type_comparator_by_value> mx_points;
     };

@@ -136,7 +136,7 @@ private:
             iterator previous = find(a);
             InsertGuard <point_type_comparator_by_arg> currentGuard
                     (make_point(a, v), points);
-            iterator current = currentGuard->it;
+            iterator current = currentGuard.it;
 
             iterator neighbours[] = {left(current),
                                      current,
@@ -153,7 +153,7 @@ private:
                 unmark_as_maximum(neighbour);
 
             currentGuard.commit();
-            for (std::unique_ptr<Guard> guard : updateGuards)
+            for (auto &guard : updateGuards)
                 guard->commit();
 
             if (previous != end())
@@ -196,7 +196,7 @@ private:
             iterator it;
             std::multiset<point_type, comparator> *multiset;
 
-            ~InsertGuard() {
+            ~InsertGuard() noexcept {
                 if (!Guard::done) {
                     multiset->erase(it);
                 }
@@ -216,6 +216,7 @@ private:
         };
 
         bool is_a_local_maximum(iterator it) {
+            // TODO multiple values for argument
             return (left(it) == end() || left(it)->value() < it->value())
                    && (right(it) == end() || right(it)->value() < it->value());
         }
@@ -228,10 +229,17 @@ private:
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
             if (!was_a_local_maximum && is_a_local_maximum(it))
-                return std::unique_ptr<InsertGuard<point_type_comparator_by_value>>(
-                        *it, mx_points);
+                return std::make_shared<
+                        InsertGuard < point_type_comparator_by_value>>
+            (
+                    *it, mx_points);
             return std::unique_ptr<EmptyGuard>();
         }
+
+//
+//  f(1) = 1                          MX                       MX
+//  f(2) = 2,-1 MX -> mark_as_maximum MX -> unmark_as_maximum(noexcept)
+//  f(3) = 1                          MX                       MX
 
         void unmark_as_maximum(iterator it) noexcept {
             if (it == points.end())
@@ -253,11 +261,7 @@ private:
         }
 
         iterator right(const iterator &start) {
-            iterator it = points.template upper_bound(*start);
-            if (it != end())
-                return ++it;
-            else
-                return end();
+            return points.upper_bound(*start);
         }
 
 

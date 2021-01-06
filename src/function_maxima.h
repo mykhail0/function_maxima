@@ -112,7 +112,10 @@ private:
         }
 
         iterator find(A const &a) const {
-            return find_in_multiset(a, points);
+            // TODO avoid copying
+            std::shared_ptr<A> A_ptr = std::make_shared<A>(a);
+            point_type pt = make_point(A_ptr, nullptr);
+            return points.find(pt);
         }
 
         iterator begin() const { return points.begin(); }
@@ -168,16 +171,6 @@ private:
 
     private:
 
-        template<typename comparator>
-        static iterator find_in_multiset(
-                const A &a,
-                const std::multiset<point_type, comparator> &multiset) {
-            // TODO avoid copying
-            std::shared_ptr<A> A_ptr = std::make_shared<A>(a);
-            point_type pt = make_point(A_ptr, nullptr);
-            return multiset.find(pt);
-        }
-
         class Guard {
         protected:
             bool done;
@@ -225,15 +218,14 @@ private:
         std::unique_ptr<Guard> mark_as_maximum(iterator it) {
             if (it == points.end())
                 return std::unique_ptr<EmptyGuard>();
-            auto it_mx = find_in_multiset(*it, mx_points);
+            auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 
             if (!was_a_local_maximum && is_a_local_maximum(it))
-                return std::make_shared<
-                        InsertGuard < point_type_comparator_by_value>>
-            (
-                    *it, mx_points);
+                return std::make_unique<
+                        InsertGuard<point_type_comparator_by_value>>(*it,
+                                                                     mx_points);
             return std::unique_ptr<EmptyGuard>();
         }
 
@@ -245,7 +237,7 @@ private:
         void unmark_as_maximum(iterator it) noexcept {
             if (it == points.end())
                 return;
-            auto it_mx = find_in_multiset(*it, mx_points);
+            auto it_mx = mx_points.find(*it);
 
             bool was_a_local_maximum = (it_mx != mx_points.end());
 

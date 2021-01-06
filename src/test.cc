@@ -18,5 +18,8 @@ class Secret {
 };
 
 int main() {
-    FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
+    // Should not compile.
+    // FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
+
+    FunctionMaxima<int, int> func;
 }

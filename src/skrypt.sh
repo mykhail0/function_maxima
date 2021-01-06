@@ -11,9 +11,10 @@ NOCOLOR='\033[0m'
 function assert_test_passes() {
   code="$1"
 
-  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled >/dev/null 2>/dev/null; then
+#if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled >/dev/null 2>/dev/null; then
+  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled ; then
     if ./test_damiana_compiled >/dev/null 2>/dev/null; then
-      echo -ne "${GREEN}[${code}] success: exit code 0${NOCOLOR}\n"
+      echo -ne "${GREEN}testv2[${code}] success: exit code 0${NOCOLOR}\n"
     else
       echo -ne "${RED}[${code}] failed: nonzero code returned${NOCOLOR}\n"
     fi
@@ -25,7 +26,8 @@ function assert_test_passes() {
 function assert_test_fails() {
   code="$1"
 
-  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled 2>/dev/null; then
+  #if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled 2>/dev/null; then
+  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled ; then
     echo -ne "${RED}[${code}] failed: compilation should fail but did not${NOCOLOR}\n"
   else
     echo -ne "${GREEN}[${code}] success: compilation failed${NOCOLOR}\n"

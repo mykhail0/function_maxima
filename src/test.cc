@@ -8,13 +8,16 @@
 using namespace std;
 
 class Secret {
-  public:
+public:
     int get() const { return value; }
+
     bool operator<(const Secret &a) const { return value < a.value; }
+
     static Secret create(int v) { return Secret(v); }
 
-  private:
+private:
     Secret(int v) : value(v) {}
+
     int value;
 };
 
@@ -22,7 +25,7 @@ int main() {
     // Should not compile.
     // FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
 
-    FunctionMaxima<Secret, Secret> func;
+    FunctionMaxima <Secret, Secret> func;
 
     Secret s1 = Secret::create(1);
     Secret s2 = Secret::create(2);
@@ -37,6 +40,8 @@ int main() {
     func.set_value(s3, s33);
     func.set_value(s3, s33);
     func.set_value(s4, s44);
-    for (auto it = func.mx_begin(); it != func.mx_end(); it++)
+
+    for(auto it = func.mx_begin(); it != func.mx_end(); it++){
         cout << it->value().get() << endl;
+    }
 }

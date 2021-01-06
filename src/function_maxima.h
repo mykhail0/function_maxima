@@ -186,8 +186,6 @@ private:
 
             for (auto &guard : eraseGuards)
                 guard->commit();
-
-            //std::cout << is_a_local_maximum(current, new_argument ? DONT_SKIP : SKIP_LEFT) << std::endl;
         }
 
         void erase(const A &a) {
@@ -233,7 +231,6 @@ private:
             bool done;
 
             Guard() : done(false) {}
-
         public:
             virtual ~Guard() = default;
 
@@ -274,12 +271,9 @@ private:
 
             DelayedErase(
                 const it_type &iter, std::multiset<point_type, comparator> &multiset
-            ) : Guard(), it(iter), multiset(&multiset) {
-                std::cout << "bruh" << std::endl;
-            }
+            ) : Guard(), it(iter), multiset(&multiset) {}
 
             ~DelayedErase() noexcept {
-                std::cout << "delayederase dtor" << std::endl;
                 if (Guard::done) {
                     multiset->erase(it);
                 }

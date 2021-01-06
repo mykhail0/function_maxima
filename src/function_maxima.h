@@ -1,12 +1,13 @@
 #ifndef FUNCTION_MAXIMA_H
 #define FUNCTION_MAXIMA_H
 
+#include <iostream>
 #include <memory>
 #include <set>
 
 template<typename A, typename V>
 class FunctionMaxima {
-  public:
+public:
     class point_type {
     public:
         // Returns function argument.
@@ -28,10 +29,11 @@ class FunctionMaxima {
         std::shared_ptr<V> val_;
 
         friend point_type FunctionMaxima::make_point(
-                std::shared_ptr<A>, std::shared_ptr<V>
+                const std::shared_ptr<A> &, const std::shared_ptr<V> &
         );
 
-        explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> val)
+        explicit point_type(const std::shared_ptr<A> &arg,
+                            const std::shared_ptr<V> &val)
         noexcept:
                 arg_(arg), val_(val) {};
     };
@@ -67,37 +69,40 @@ class FunctionMaxima {
     }
 
     iterator begin() const { return imp->begin(); }
+
     iterator end() const { return imp->end(); }
+
     iterator find(A const &x) const { return imp->find(x); }
+
     mx_iterator mx_begin() const { return imp->mx_begin(); }
+
     mx_iterator mx_end() const { return imp->mx_end(); }
+
     size_type size() const { return imp->size(); }
-/*
+
     V const &value_at(const A &a) const { return imp->value_at(a); }
+
     void set_value(const A &a, const V &v) { imp->set_value(a, v); }
-    void erase(const A &a) { imp->erase(a); }
-*/
+//    void erase(const A &a) { imp->erase(a); }
 
-  private:
 
-    // First compares by value, if equal compares by argument.
-    class point_type_comparator_by_value {
-        bool operator()(const point_type &p1, const point_type &p2) {
-            return (!(p1.value() < p2.value()) && !(p2.value() < p1.value())) ?
-                    p1.arg() < p2.arg() :
-                    p1.value() < p2.value();
-        }
-    };
+private:
 
     // Exposed point_type constructor
     static point_type
-    make_point(std::shared_ptr<A> arg, std::shared_ptr<V> value) {
+    make_point(const std::shared_ptr<A> &arg, const std::shared_ptr<V> &value) {
         return point_type(arg, value);
     }
 
+    static point_type
+    make_point(const A &arg, const V &value) {
+        return make_point(std::make_shared<A>(arg), std::make_shared<V>(value));
+    }
+
     class MaximaImpl {
-      public:
+    public:
         MaximaImpl() = default;
+
         ~MaximaImpl() = default;
 
         MaximaImpl(const MaximaImpl &other) : points(other.points) {
@@ -106,16 +111,18 @@ class FunctionMaxima {
             }
         }
 
-        iterator find(A const &x) const {
-            std::shared_ptr<A> A_ptr(&x);
-            point_type pt = make_point(A_ptr, nullptr);
-            return points.find(pt);
+        iterator find(A const &a) const {
+            return find_in_multiset(a, points);
         }
 
         iterator begin() const { return points.begin(); }
+
         iterator end() const { return points.end(); }
+
         mx_iterator mx_begin() const { return mx_points.begin(); }
-        mx_iterator mx_end() const { return  mx_points.end(); }
+
+        mx_iterator mx_end() const { return mx_points.end(); }
+
         size_type size() const { return points.size(); }
 
         const V &value_at(const A &a) const {
@@ -126,6 +133,33 @@ class FunctionMaxima {
         }
 
         void set_value(const A &a, const V &v) {
+            iterator previous = find(a);
+            InsertGuard <point_type_comparator_by_arg> currentGuard
+                    (make_point(a, v), points);
+            iterator current = currentGuard->it;
+
+            iterator neighbours[] = {left(current),
+                                     current,
+                                     right(current)};
+
+            std::unique_ptr<Guard> updateGuards[] =
+                    {mark_as_maximum(neighbours[0]),
+                     mark_as_maximum(neighbours[1]),
+                     mark_as_maximum(neighbours[2])};
+
+            // From this point, the function will not throw an exception
+
+            for (iterator neighbour : neighbours)
+                unmark_as_maximum(neighbour);
+
+            currentGuard.commit();
+            for (std::unique_ptr<Guard> guard : updateGuards)
+                guard->commit();
+
+            if (previous != end())
+                points.erase(previous);
+
+            std::cout << is_a_local_maximum(current) << std::endl;
         }
 
         void erase(const A &a) {
@@ -133,8 +167,104 @@ class FunctionMaxima {
 
     private:
 
+        template<typename comparator>
+        static iterator find_in_multiset(
+                const A &a,
+                const std::multiset<point_type, comparator> &multiset) {
+            // TODO avoid copying
+            std::shared_ptr<A> A_ptr = std::make_shared<A>(a);
+            point_type pt = make_point(A_ptr, nullptr);
+            return multiset.find(pt);
+        }
+
+        class Guard {
+        protected:
+            bool done;
+
+            Guard() : done(false) {}
+
+        public:
+            void commit() {
+                done = true;
+            }
+        };
+
+        template<typename comparator>
+        class InsertGuard : public Guard {
+        public:
+
+            iterator it;
+            std::multiset<point_type, comparator> *multiset;
+
+            ~InsertGuard() {
+                if (!Guard::done) {
+                    multiset->erase(it);
+                }
+            }
+
+            InsertGuard(const point_type &point,
+                        std::multiset<point_type, comparator> &multiset) :
+                    Guard() {
+                it = multiset.insert(point);
+                this->multiset = &multiset;
+            }
+
+            InsertGuard(const InsertGuard &other) = default;
+        };
+
+        class EmptyGuard : public Guard {
+        };
+
+        bool is_a_local_maximum(iterator it) {
+            return (left(it) == end() || left(it)->value() < it->value())
+                   && (right(it) == end() || right(it)->value() < it->value());
+        }
+
+        std::unique_ptr<Guard> mark_as_maximum(iterator it) {
+            if (it == points.end())
+                return std::unique_ptr<EmptyGuard>();
+            auto it_mx = find_in_multiset(it->arg(), mx_points);
+
+            bool was_a_local_maximum = (it_mx != mx_points.end());
+
+            if (!was_a_local_maximum && is_a_local_maximum(it))
+                return std::unique_ptr<InsertGuard<point_type_comparator_by_value>>(
+                        *it, mx_points);
+            return std::unique_ptr<EmptyGuard>();
+        }
+
+        void unmark_as_maximum(iterator it) noexcept {
+            if (it == points.end())
+                return;
+            auto it_mx = find_in_multiset(it->arg(), mx_points);
+
+            bool was_a_local_maximum = (it_mx != mx_points.end());
+
+            if (was_a_local_maximum && !is_a_local_maximum(it))
+                mx_points.erase(it_mx);
+        }
+
+        iterator left(const iterator &start) {
+            iterator it = points.lower_bound(*start);
+            if (it != begin())
+                return --it;
+            else
+                return end();
+        }
+
+        iterator right(const iterator &start) {
+            iterator it = points.template upper_bound(*start);
+            if (it != end())
+                return ++it;
+            else
+                return end();
+        }
+
+
+        // First compares by argument, if equal compares by value
         class point_type_comparator_by_arg {
         public:
+
             bool operator()(const point_type &p1, const point_type &p2) const {
                 return p1.arg() < p2.arg();
             }
@@ -143,9 +273,15 @@ class FunctionMaxima {
         // First compares by value, if equal compares by argument.
         class point_type_comparator_by_value {
         public:
+            template<typename> friend
+            class InsertGuard;
+
             bool operator()(const point_type &p1, const point_type &p2) const {
-                return p1.value() < p2.value() ||
-                       (p1.value() == p2.value() && p1.arg() < p2.arg());
+                return (!(p1.value() < p2.value()) &&
+                        !(p2.value() < p1.value())) ?
+                       p1.arg() < p2.arg() :
+                       p1.value() < p2.value();
+
             }
         };
 

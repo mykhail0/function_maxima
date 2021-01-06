@@ -21,6 +21,16 @@ int main() {
     // Should not compile.
     // FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
 
-    FunctionMaxima<int, int> func;
-    FunctionMaxima<int, int> func2 = func;
+    FunctionMaxima<Secret, Secret> func;
+    Secret s1 = Secret::create(1);
+    Secret s2 = Secret::create(2);
+    Secret s3 = Secret::create(3);
+    Secret s11 = Secret::create(11);
+    Secret s22 = Secret::create(22);
+    Secret s33 = Secret::create(33);
+    func.set_value(s1, s11);
+    func.set_value(s2, s22);
+    func.set_value(s3, s33);
+    for (auto it = func.mx_begin(); it != func.mx_end(); it++)
+        cout << it->value().get() << endl;
 }

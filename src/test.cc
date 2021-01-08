@@ -25,10 +25,7 @@ int main() {
     // Should not compile.
     // FunctionMaxima<int, int>::point_type p {nullptr, nullptr};
 
-    Secret s1 = Secret::create(1);
-    Secret s2 = Secret::create(1);
-    cout << (s1 <= s2) << endl;
-/*    FunctionMaxima <Secret, Secret> func;
+    FunctionMaxima <Secret, Secret> func;
 
     Secret s1 = Secret::create(1);
     Secret s2 = Secret::create(2);
@@ -46,5 +43,5 @@ int main() {
 
     for(auto it = func.mx_begin(); it != func.mx_end(); it++){
         cout << it->value().get() << endl;
-    }*/
+    }
 }

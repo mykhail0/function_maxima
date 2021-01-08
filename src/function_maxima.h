@@ -1,14 +1,13 @@
 #ifndef FUNCTION_MAXIMA_H
 #define FUNCTION_MAXIMA_H
 
-#include <iostream>
 #include <memory>
 #include <set>
 
 class InvalidArg : public std::exception {
 public:
     virtual const char *what() const throw() {
-        return "Argument is not in the domain.";
+        return "invalid argument value";
     }
 };
 
@@ -38,20 +37,6 @@ public:
     V const &value_at(const A &a) const { return imp->value_at(a); }
     void set_value(const A &a, const V &v) { imp->set_value(a, v); }
     void erase(const A &a) { imp->erase(a); }
-
-    void debug() {
-        std::cout << "POINTS:" << std::endl;
-        for(auto p : *this)
-            std::cout << p.arg() << " -> " << p.value() << std::endl;
-
-        std::cout << "MX_POINTS:" << std::endl;
-        for(auto it = mx_begin(); it != mx_end(); it++){
-            auto p = *it;
-            std::cout << p.arg() << " -> " << p.value() << std::endl;
-        }
-
-        std::cout << "-----------------------------------" << std::endl;
-    }
 
 private:
 

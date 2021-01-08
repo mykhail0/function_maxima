@@ -65,6 +65,7 @@ private:
     static point_type
     make_point(const A &, const V &);
 
+    // Handle body idiom, of use to non swap idiom.
     class MaximaImpl;
 
     std::unique_ptr<MaximaImpl> imp;
@@ -174,24 +175,30 @@ private:
         DONT_SKIP, SKIP_LEFT, SKIP_RIGHT
     };
 
+    // Base Guard class with `commit()` functionality.
     class Guard;
 
     // Guards inserting the point_type object into the given multiset
-    // with `comparator` comparator.
+    // with `it_type` iterator and `comparator` comparator.
     template <typename comparator, typename it_type>
     class InsertGuard;
 
-    // Guards erasing a given iterator from the multiset
-    // with `comparator` comparator.
+    // Guards erasing a given iterator from the given multiset
+    // with `it_type` iterator and `comparator` comparator.
     template <typename comparator, typename it_type>
     class DelayedErase;
 
     class EmptyGuard : public Guard {};
 
+    // Checks if the point pointed to by the given iterator is a local maximum.
     bool is_a_local_maximum(const iterator &, ToOmit);
 
+    // Adds the point pointed to by the given iterator to mx_points
+    // if it is a local maximum.
     std::unique_ptr<Guard> mark_as_maximum(const iterator &, ToOmit);
 
+    // Removes the point pointed to by the given iterator from mx_points
+    // if it is not a local maximum.
     std::unique_ptr<Guard> unmark_as_maximum(const iterator &, ToOmit);
 
     // Returns left neighbour of `start`.
@@ -200,13 +207,12 @@ private:
     // Returns right neighbour of `start`.
     iterator right(const iterator &, ToOmit);
 
-    // First compares by argument, if equal compares by value
+    // First compares by argument, if equal compares by value.
     class point_type_comparator_by_arg;
 
     // First compares by value, if equal compares by argument.
     class point_type_comparator_by_value;
 
-    // Data members.
     InvalidArg invalid_exception;
     std::multiset<point_type, point_type_comparator_by_arg> points;
     std::multiset<point_type, point_type_comparator_by_value> mx_points;

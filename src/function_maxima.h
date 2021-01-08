@@ -80,6 +80,7 @@ FunctionMaxima<A, V>::FunctionMaxima(const FunctionMaxima<A, V> &other) {
     imp = std::make_unique<MaximaImpl>(*other.imp);
 }
 
+// Exchanging pointers, nothrow swap idiom.
 template <typename A, typename V>
 void FunctionMaxima<A, V>::swap(FunctionMaxima<A, V> &other) noexcept {
     std::swap(this->imp, other.imp);
@@ -126,6 +127,10 @@ private:
     friend point_type FunctionMaxima::make_point(
             const std::shared_ptr<A> &, const std::shared_ptr<V> &
     );
+
+    // For the purpose of avoiding copy constructing the argument
+    // if it was already present in the function.
+    friend void FunctionMaxima<A, V>::MaximaImpl::set_value(const A &, const V &);
 
     explicit point_type(
         const std::shared_ptr<A> &, const std::shared_ptr<V> &) noexcept;
@@ -237,18 +242,22 @@ const V &FunctionMaxima<A, V>::MaximaImpl::value_at(const A &a) const {
     return it->value();
 }
 
+// TODO implement without ToOmit.
 template <typename A, typename V>
 void FunctionMaxima<A, V>::MaximaImpl::set_value(const A &a, const V &v) {
-    // TODO avoid copying a if already exists
     iterator previous = find(a);
     if (previous != end() && !(previous->value() < v || v <previous->value()))
         return;
 
-    InsertGuard <point_type_comparator_by_arg, iterator> currentGuard
-            (make_point(a, v), points);
-    iterator current = currentGuard.it;
-
     bool new_argument = previous == end();
+
+    // Avoids copy constructing `a` if it is already present in the domain.
+    point_type to_be_inserted = new_argument ?
+        make_point(a, v) : make_point(previous->arg_, std::make_shared<V>(v));
+
+    InsertGuard <point_type_comparator_by_arg, iterator> currentGuard
+            (to_be_inserted, points);
+    iterator current = currentGuard.it;
 
     iterator neighbours[] {
         left(current, new_argument ? DONT_SKIP : SKIP_LEFT),
@@ -450,7 +459,7 @@ public:
 template <typename A, typename V>
 class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_value {
 public:
-    //TODO
+    // TODO
     bool operator()(const point_type &p1, const point_type &p2) const {
         return !(p1.value() < p2.value()) &&
                !(p2.value() < p1.value()) ?

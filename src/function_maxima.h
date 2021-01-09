@@ -189,10 +189,10 @@ private:
     std::unique_ptr<Guard> unmark_as_maximum(const iterator &, const iterator &);
 
     // Returns left neighbour of `start`, omitting the second iterator if needed.
-    iterator left(const iterator &, const iterator &);
+    iterator left(const iterator &, const iterator &) noexcept;
 
     // Returns right neighbour of `start`, omitting the second iterator if needed.
-    iterator right(const iterator &, const iterator &);
+    iterator right(const iterator &, const iterator &) noexcept;
 
     // First compares by argument, if equal compares by value.
     class point_type_comparator_by_arg;
@@ -398,9 +398,9 @@ auto FunctionMaxima<A, V>::MaximaImpl::unmark_as_maximum(
 }
 
 template <typename A, typename V>
-auto FunctionMaxima<A, V>::MaximaImpl::left(
+auto FunctionMaxima<A, V>::MaximaImpl::left (
     const iterator &start, const iterator &to_omit
-) -> iterator {
+) noexcept -> iterator {
     if (start == begin())
         return end();
 
@@ -410,9 +410,9 @@ auto FunctionMaxima<A, V>::MaximaImpl::left(
 }
 
 template <typename A, typename V>
-auto FunctionMaxima<A, V>::MaximaImpl::right(
+auto FunctionMaxima<A, V>::MaximaImpl::right (
     const iterator &start, const iterator &to_omit
-) -> iterator {
+) noexcept -> iterator {
     if (start == end())
         return end();
 

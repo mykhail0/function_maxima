@@ -10,7 +10,7 @@ project(JNP1_2)
     #set(CMAKE_C_FLAGS "-Wall -Wextra -std=c11 -O0")
 #endif ()
 
-add_executable(test src/test.cc)
+#add_executable(test src/test.cc)
 #add_definitions(-DTEST_NUM=101)
 add_executable(testyDamiana src/test_damiana.cc)
 add_executable(wyjatkowyInt src/wyjatkowy_int.cpp)

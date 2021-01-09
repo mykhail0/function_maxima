@@ -433,11 +433,10 @@ template <typename A, typename V>
 class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_value {
 public:
     bool operator()(const point_type &p1, const point_type &p2) const {
-        return !(p1.value() < p2.value()) &&
-               !(p2.value() < p1.value()) ?
-               p1.arg() < p2.arg() :
-               p2.value() < p1.value();
-
+        if(p2.value() < p1.value())
+            return true;
+        else
+            return !(p1.value() < p2.value()) && p1.arg() < p2.arg();
     }
 };
 

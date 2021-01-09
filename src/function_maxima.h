@@ -161,10 +161,6 @@ public:
 
 private:
 
-    enum ToOmit {
-        DONT_SKIP, SKIP_LEFT, SKIP_RIGHT
-    };
-
     // Base Guard class with `commit()` functionality.
     class Guard;
 
@@ -181,21 +177,22 @@ private:
     class EmptyGuard : public Guard {};
 
     // Checks if the point pointed to by the given iterator is a local maximum.
-    bool is_a_local_maximum(const iterator &, ToOmit);
+    // Omits the second given iterator.
+    bool is_a_local_maximum(const iterator &, const iterator &);
 
     // Adds the point pointed to by the given iterator to mx_points
-    // if it is a local maximum.
-    std::unique_ptr<Guard> mark_as_maximum(const iterator &, ToOmit);
+    // if it is a local maximum. Omits the second given iterator in calculations.
+    std::unique_ptr<Guard> mark_as_maximum(const iterator &, const iterator &);
 
     // Removes the point pointed to by the given iterator from mx_points
-    // if it is not a local maximum.
-    std::unique_ptr<Guard> unmark_as_maximum(const iterator &, ToOmit);
+    // if it is not a local maximum. Omits the second given iterator in calculations.
+    std::unique_ptr<Guard> unmark_as_maximum(const iterator &, const iterator &);
 
-    // Returns left neighbour of `start`.
-    iterator left(const iterator &, ToOmit);
+    // Returns left neighbour of `start`, omitting the second iterator if needed.
+    iterator left(const iterator &, const iterator &);
 
-    // Returns right neighbour of `start`.
-    iterator right(const iterator &, ToOmit);
+    // Returns right neighbour of `start`, omitting the second iterator if needed.
+    iterator right(const iterator &, const iterator &);
 
     // First compares by argument, if equal compares by value.
     class point_type_comparator_by_arg;
@@ -227,7 +224,6 @@ const V &FunctionMaxima<A, V>::MaximaImpl::value_at(const A &a) const {
     return it->value();
 }
 
-// TODO implement without ToOmit.
 template <typename A, typename V>
 void FunctionMaxima<A, V>::MaximaImpl::set_value(const A &a, const V &v) {
     iterator previous = find(a);
@@ -245,25 +241,21 @@ void FunctionMaxima<A, V>::MaximaImpl::set_value(const A &a, const V &v) {
     iterator current = currentGuard.it;
 
     iterator neighbours[] {
-        left(current, new_argument ? DONT_SKIP : SKIP_LEFT),
+        left(current, new_argument ? end() : previous),
         current,
-        right(current, DONT_SKIP)
+        right(current, end())
     };
 
     std::unique_ptr<Guard> updateGuards[] {
-        mark_as_maximum(neighbours[0],
-                new_argument ? DONT_SKIP : SKIP_RIGHT),
-        mark_as_maximum(neighbours[1],
-                new_argument ? DONT_SKIP : SKIP_LEFT),
-        mark_as_maximum(neighbours[2], DONT_SKIP)
+        mark_as_maximum(neighbours[0], new_argument ? end() : previous),
+        mark_as_maximum(neighbours[1], new_argument ? end() : previous),
+        mark_as_maximum(neighbours[2], end())
     };
 
     std::unique_ptr<Guard> eraseGuards[] {
-        unmark_as_maximum(neighbours[0],
-                new_argument ? DONT_SKIP : SKIP_RIGHT),
-        unmark_as_maximum(neighbours[1],
-                new_argument ? DONT_SKIP : SKIP_LEFT),
-        unmark_as_maximum(neighbours[2], DONT_SKIP)
+        unmark_as_maximum(neighbours[0], new_argument ? end() : previous),
+        unmark_as_maximum(neighbours[1], new_argument ? end() : previous),
+        unmark_as_maximum(neighbours[2], end())
     };
 
     if (!new_argument) {
@@ -289,18 +281,18 @@ void FunctionMaxima<A, V>::MaximaImpl::erase(const A &a) {
     mx_iterator to_erase_mx = mx_points.find(*to_erase);
 
     iterator neighbours[] {
-        left(to_erase, DONT_SKIP),
-        right(to_erase, DONT_SKIP)
+        left(to_erase, end()),
+        right(to_erase, end())
     };
 
     std::unique_ptr<Guard> updateGuards[] {
-        mark_as_maximum(neighbours[0], SKIP_RIGHT),
-        mark_as_maximum(neighbours[1], SKIP_LEFT)
+        mark_as_maximum(neighbours[0], to_erase),
+        mark_as_maximum(neighbours[1], to_erase)
     };
 
     std::unique_ptr<Guard> eraseGuards[] {
-        unmark_as_maximum(neighbours[0], SKIP_RIGHT),
-        unmark_as_maximum(neighbours[1], SKIP_LEFT)
+        unmark_as_maximum(neighbours[0], to_erase),
+        unmark_as_maximum(neighbours[1], to_erase)
     };
 
     for (auto &guard : updateGuards)
@@ -366,17 +358,17 @@ public:
 };
 
 template <typename A, typename V>
-bool FunctionMaxima<A, V>::MaximaImpl::is_a_local_maximum(const iterator &it, ToOmit neighbour) {
-    return (left(it, neighbour) == end() ||
-            !(it->value() < left(it, neighbour)->value()))
+bool FunctionMaxima<A, V>::MaximaImpl::is_a_local_maximum(const iterator &it, const iterator &to_omit) {
+    return (left(it, to_omit) == end() ||
+            !(it->value() < left(it, to_omit)->value()))
            &&
-           (right(it, neighbour) == end() ||
-           !(it->value() < right(it, neighbour)->value()));
+           (right(it, to_omit) == end() ||
+           !(it->value() < right(it, to_omit)->value()));
 }
 
 template <typename A, typename V>
 auto FunctionMaxima<A, V>::MaximaImpl::mark_as_maximum(
-    const iterator &it, ToOmit neighbour
+    const iterator &it, const iterator &to_omit
 ) -> std::unique_ptr<Guard> {
     if (it == points.end())
         return std::make_unique<EmptyGuard>();
@@ -384,14 +376,14 @@ auto FunctionMaxima<A, V>::MaximaImpl::mark_as_maximum(
 
     bool was_a_local_maximum = (it_mx != mx_points.end());
 
-    if (!was_a_local_maximum && is_a_local_maximum(it, neighbour))
+    if (!was_a_local_maximum && is_a_local_maximum(it, to_omit))
         return std::make_unique<InsertGuard<point_type_comparator_by_value, mx_iterator>>(*it, mx_points);
     return std::make_unique<EmptyGuard>();
 }
 
 template <typename A, typename V>
 auto FunctionMaxima<A, V>::MaximaImpl::unmark_as_maximum(
-    const iterator &it, ToOmit neighbour
+    const iterator &it, const iterator &to_omit
 ) -> std::unique_ptr<Guard> {
     if (it == points.end())
         return std::make_unique<EmptyGuard>();
@@ -399,7 +391,7 @@ auto FunctionMaxima<A, V>::MaximaImpl::unmark_as_maximum(
 
     bool was_a_local_maximum = (it_mx != mx_points.end());
 
-    if (was_a_local_maximum && !is_a_local_maximum(it, neighbour))
+    if (was_a_local_maximum && !is_a_local_maximum(it, to_omit))
         return std::make_unique<DelayedErase<point_type_comparator_by_value, mx_iterator>>(it_mx, mx_points);
 
     return std::make_unique<EmptyGuard>();
@@ -407,30 +399,26 @@ auto FunctionMaxima<A, V>::MaximaImpl::unmark_as_maximum(
 
 template <typename A, typename V>
 auto FunctionMaxima<A, V>::MaximaImpl::left(
-    const iterator &start, ToOmit neighbour
+    const iterator &start, const iterator &to_omit
 ) -> iterator {
     if (start == begin())
         return end();
 
-    if (neighbour == SKIP_LEFT) {
-        return left(std::prev(start), DONT_SKIP);
-    } else {
-        return std::prev(start);
-    }
+    iterator ans = std::prev(start);
+
+    return ans == to_omit ? left(ans, to_omit) : ans;
 }
 
 template <typename A, typename V>
 auto FunctionMaxima<A, V>::MaximaImpl::right(
-    const iterator &start, ToOmit neighbour
+    const iterator &start, const iterator &to_omit
 ) -> iterator {
     if (start == end())
         return end();
 
-    if (neighbour == SKIP_RIGHT) {
-        return right(std::next(start), DONT_SKIP);
-    } else {
-        return std::next(start);
-    }
+    iterator ans = std::next(start);
+
+    return ans == to_omit ? right(ans, to_omit) : ans;
 }
 
 template <typename A, typename V>
@@ -444,7 +432,6 @@ public:
 template <typename A, typename V>
 class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_value {
 public:
-    // TODO
     bool operator()(const point_type &p1, const point_type &p2) const {
         return !(p1.value() < p2.value()) &&
                !(p2.value() < p1.value()) ?

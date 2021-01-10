@@ -18,12 +18,6 @@ public:
 
 private:
 
-    // First compares by argument, if equal compares by value.
-    class point_type_comparator_by_arg;
-
-    // First compares by value, if equal compares by argument.
-    class point_type_comparator_by_value;
-
     // Handle body idiom, of use to non swap idiom.
     class MaximaImpl;
 
@@ -41,11 +35,9 @@ private:
 
 public:
 
-    using iterator = typename std::multiset<point_type,
-            point_type_comparator_by_arg>::const_iterator;
-    using mx_iterator = typename std::multiset<point_type,
-            point_type_comparator_by_value>::const_iterator;
-    using size_type = typename std::multiset<point_type>::size_type;
+    using iterator = typename MaximaImpl::iterator;
+    using mx_iterator = typename MaximaImpl::mx_iterator;
+    using size_type = typename MaximaImpl::size_type;
 
     FunctionMaxima() { imp = std::make_unique<MaximaImpl>(); }
     FunctionMaxima(const FunctionMaxima &);
@@ -152,7 +144,22 @@ FunctionMaxima<A, V>::point_type::point_type(
  */
 template <typename A, typename V>
 class FunctionMaxima<A, V>::MaximaImpl {
+
+private:
+    // First compares by argument, if equal compares by value.
+    class point_type_comparator_by_arg;
+
+    // First compares by value, if equal compares by argument.
+    class point_type_comparator_by_value;
+
 public:
+
+    using iterator = typename std::multiset<point_type,
+            point_type_comparator_by_arg>::const_iterator;
+    using mx_iterator = typename std::multiset<point_type,
+            point_type_comparator_by_value>::const_iterator;
+    using size_type = typename std::multiset<point_type>::size_type;
+
     MaximaImpl() = default;
     MaximaImpl(const MaximaImpl &other) = default;
     ~MaximaImpl() = default;
@@ -232,7 +239,7 @@ const V &FunctionMaxima<A, V>::MaximaImpl::value_at(const A &a) const {
 template <typename A, typename V>
 void FunctionMaxima<A, V>::MaximaImpl::set_value(const A &a, const V &v) {
     iterator previous = find(a);
-    if (previous != end() && !(previous->value() < v || v <previous->value()))
+    if (previous != end() && !(previous->value() < v || v < previous->value()))
         return;
 
     bool new_argument = previous == end();
@@ -427,7 +434,7 @@ auto FunctionMaxima<A, V>::MaximaImpl::right (
 }
 
 template <typename A, typename V>
-class FunctionMaxima<A, V>::point_type_comparator_by_arg {
+class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_arg {
 public:
     bool operator()(const point_type &p1, const point_type &p2) const {
         return p1.arg() < p2.arg();
@@ -435,7 +442,7 @@ public:
 };
 
 template <typename A, typename V>
-class FunctionMaxima<A, V>::point_type_comparator_by_value {
+class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_value {
 public:
     bool operator()(const point_type &p1, const point_type &p2) const {
         if(p2.value() < p1.value())

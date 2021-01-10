@@ -40,28 +40,13 @@ namespace {
 
 template<typename A, typename V>
 class FunctionMaxima {
-public:
-    class point_type;
 
 private:
-
     // Handle body idiom, of use to non swap idiom.
     class MaximaImpl;
 
-    void swap(FunctionMaxima &) noexcept;
-
-    // Exposed point_type constructor.
-    static point_type
-    make_point(const Pointer<A> &, const Pointer<V> &);
-
-    // Exposed point_type constructor.
-    static point_type
-    make_point(const A &, const V &);
-
-    std::unique_ptr<MaximaImpl> imp;
-
 public:
-
+    class point_type;
     using iterator = typename MaximaImpl::iterator;
     using mx_iterator = typename MaximaImpl::mx_iterator;
     using size_type = typename MaximaImpl::size_type;
@@ -91,6 +76,20 @@ public:
     void set_value(const A &a, const V &v) { imp->set_value(a, v); }
 
     void erase(const A &a) { imp->erase(a); }
+
+private:
+
+    void swap(FunctionMaxima &) noexcept;
+
+    // Exposed point_type constructor.
+    static point_type
+    make_point(const Pointer<A> &, const Pointer<V> &);
+
+    // Exposed point_type constructor.
+    static point_type
+    make_point(const A &, const V &);
+
+    std::unique_ptr<MaximaImpl> imp;
 
 };
 

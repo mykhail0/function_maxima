@@ -16,8 +16,35 @@ class FunctionMaxima {
 public:
     class point_type;
 
-    using iterator = typename std::multiset<point_type>::const_iterator;
-    using mx_iterator = typename std::multiset<point_type>::const_iterator;
+private:
+
+    // First compares by argument, if equal compares by value.
+    class point_type_comparator_by_arg;
+
+    // First compares by value, if equal compares by argument.
+    class point_type_comparator_by_value;
+
+    // Handle body idiom, of use to non swap idiom.
+    class MaximaImpl;
+
+    void swap(FunctionMaxima &) noexcept;
+
+    // Exposed point_type constructor.
+    static point_type
+    make_point(const std::shared_ptr<A> &, const std::shared_ptr<V> &);
+
+    // Exposed point_type constructor.
+    static point_type
+    make_point(const A &, const V &);
+
+    std::unique_ptr<MaximaImpl> imp;
+
+public:
+
+    using iterator = typename std::multiset<point_type,
+            point_type_comparator_by_arg>::const_iterator;
+    using mx_iterator = typename std::multiset<point_type,
+            point_type_comparator_by_value>::const_iterator;
     using size_type = typename std::multiset<point_type>::size_type;
 
     FunctionMaxima() { imp = std::make_unique<MaximaImpl>(); }
@@ -38,22 +65,6 @@ public:
     void set_value(const A &a, const V &v) { imp->set_value(a, v); }
     void erase(const A &a) { imp->erase(a); }
 
-private:
-
-    void swap(FunctionMaxima &) noexcept;
-
-    // Exposed point_type constructor.
-    static point_type
-    make_point(const std::shared_ptr<A> &, const std::shared_ptr<V> &);
-
-    // Exposed point_type constructor.
-    static point_type
-    make_point(const A &, const V &);
-
-    // Handle body idiom, of use to non swap idiom.
-    class MaximaImpl;
-
-    std::unique_ptr<MaximaImpl> imp;
 };
 
 /*
@@ -134,7 +145,7 @@ auto FunctionMaxima<A, V>::point_type::operator=(const point_type &other) -> poi
 template <typename A, typename V>
 FunctionMaxima<A, V>::point_type::point_type(
     const std::shared_ptr<A> &arg, const std::shared_ptr<V> &val
-) noexcept : arg_(arg), val_(val) {};
+) noexcept : arg_(arg), val_(val) {}
 
 /*
  * MaximaImpl definitions.
@@ -193,12 +204,6 @@ private:
 
     // Returns right neighbour of `start`, omitting the second iterator if needed.
     iterator right(const iterator &, const iterator &) noexcept;
-
-    // First compares by argument, if equal compares by value.
-    class point_type_comparator_by_arg;
-
-    // First compares by value, if equal compares by argument.
-    class point_type_comparator_by_value;
 
     InvalidArg invalid_exception;
     std::multiset<point_type, point_type_comparator_by_arg> points;
@@ -422,7 +427,7 @@ auto FunctionMaxima<A, V>::MaximaImpl::right (
 }
 
 template <typename A, typename V>
-class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_arg {
+class FunctionMaxima<A, V>::point_type_comparator_by_arg {
 public:
     bool operator()(const point_type &p1, const point_type &p2) const {
         return p1.arg() < p2.arg();
@@ -430,7 +435,7 @@ public:
 };
 
 template <typename A, typename V>
-class FunctionMaxima<A, V>::MaximaImpl::point_type_comparator_by_value {
+class FunctionMaxima<A, V>::point_type_comparator_by_value {
 public:
     bool operator()(const point_type &p1, const point_type &p2) const {
         if(p2.value() < p1.value())

@@ -4,7 +4,7 @@
 to_pass=(101 102 103 104 105 106 201 202 203 204 205 206 207 208 209 210 211 301 401 402 403 404 405 406 407 701)
 to_fail=(501)
 
-compiler_flags="g++ -Og -g -Wall -Wextra -std=c++17 "
+compiler_flags="g++ -Wall -Wextra -pedantic -std=c++17 -Og -g -Wshadow -Wformat=2 -Wfloat-equal -Wconversion -Wcast-qual -Wcast-align -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -fsanitize=address -fsanitize=undefined -fstack-protector "
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NOCOLOR='\033[0m'
@@ -12,10 +12,9 @@ NOCOLOR='\033[0m'
 function assert_test_passes() {
   code="$1"
 
-if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled >/dev/null 2>/dev/null; then
-    #  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled ; then
+  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled >/dev/null 2>/dev/null; then
     if ./test_damiana_compiled >/dev/null 2>/dev/null; then
-      echo -ne "${GREEN}testv2[${code}] success: exit code 0${NOCOLOR}\n"
+      echo -ne "${GREEN}[${code}] success: exit code 0${NOCOLOR}\n"
     else
       echo -ne "${RED}[${code}] failed: nonzero code returned${NOCOLOR}\n"
     fi
@@ -27,8 +26,7 @@ if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled >/d
 function assert_test_fails() {
   code="$1"
 
-          if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled 2>/dev/null; then
-        #if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled ; then
+  if $compiler_flags -DTEST_NUM=$code test_damiana.cc -o test_damiana_compiled 2>/dev/null; then
     echo -ne "${RED}[${code}] failed: compilation should fail but did not${NOCOLOR}\n"
   else
     echo -ne "${GREEN}[${code}] success: compilation failed${NOCOLOR}\n"

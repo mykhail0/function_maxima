@@ -1258,7 +1258,7 @@ int main() {
     }
 #endif
 
-#if TEST_NUM == 407
+#if TEST_NUM == 406
     std::default_random_engine e(2137);
     std::uniform_int_distribution<JumpThrower::typ> u(1, 7);
 
@@ -1295,7 +1295,7 @@ int main() {
     }
 #endif
 
-#if TEST_NUM == 408
+#if TEST_NUM == 407
     std::default_random_engine e(2137);
     std::uniform_int_distribution<AboveThrower::typ> u(1, 5);
 
